@@ -1,0 +1,3 @@
+The command to start the application is docker-compose -f docker-compose.yml -p grpc-ruby up
+To create a network for both containers, docker network create grpc-ruby
+To open the UI part of the application, go to http://localhost:8002/todo_lists

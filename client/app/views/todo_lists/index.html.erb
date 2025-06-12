@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To-Do List</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+  <div class="container mx-auto p-4">
+    <h1 class="text-3xl font-bold mb-6 text-center">To-Do List</h1>
+
+    <!-- Filter Section -->
+    <div class="mb-4 flex justify-center">
+      <select id="completed-filter" class="border rounded p-2">
+        <option value="all">All Tasks</option>
+        <option value="false">Incomplete</option>
+        <option value="true">Completed</option>
+      </select>
+    </div>
+
+    <!-- Add Task Form -->
+    <div class="mb-6 bg-white p-4 rounded shadow">
+      <h2 class="text-xl font-semibold mb-2">Add Task</h2>
+      <form id="add-task-form" class="flex gap-2">
+        <input type="text" id="task-description" placeholder="Enter task description" class="flex-1 border rounded p-2" required>
+        <label class="flex items-center">
+          <input type="checkbox" id="task-completed" class="mr-2">
+          Completed
+        </label>
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Add</button>
+      </form>
+    </div>
+
+    <!-- Bulk Add Tasks Form -->
+    <div class="mb-6 bg-white p-4 rounded shadow">
+      <h2 class="text-xl font-semibold mb-2">Add Multiple Tasks</h2>
+      <form id="bulk-add-form">
+        <div id="bulk-tasks" class="space-y-2">
+          <div class="bulk-task flex gap-2">
+            <input type="text" class="bulk-description flex-1 border rounded p-2" placeholder="Task description" required>
+            <label class="flex items-center">
+              <input type="checkbox" class="bulk-completed mr-2">
+              Completed
+            </label>
+            <button type="button" class="remove-task bg-red-500 text-white px-2 py-1 rounded">Remove</button>
+          </div>
+        </div>
+        <button type="button" id="add-bulk-task" class="mt-2 text-blue-500">+ Add Another Task</button>
+        <button type="submit" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Add All</button>
+      </form>
+    </div>
+
+    <!-- Task List -->
+    <div id="task-list" class="space-y-4">
+
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = '/todo_lists';
+
+    async function fetchTasks(completed = 'all') {
+      const url = completed === 'all' ? API_BASE : `${API_BASE}?completed=${completed}`;
+      try {
+        const response = await fetch(url);
+        const { data } = await response.json();
+        renderTasks(data);
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+
+    function renderTasks(tasks) {
+      const taskList = document.getElementById('task-list');
+      taskList.innerHTML = tasks.length ? '' : '<p class="text-center text-gray-500">No tasks found.</p>';
+      tasks.forEach(task => {
+        const taskCard = document.createElement('div');
+        taskCard.className = 'bg-white p-4 rounded shadow flex justify-between items-center';
+        taskCard.innerHTML = `
+          <div>
+            <h3 class="text-lg font-semibold ${task.completed ? 'line-through text-gray-500' : ''}">
+              ${task.description}
+            </h3>
+            <p class="text-sm text-gray-600">ID: ${task.id} | ${task.completed ? 'Completed' : 'Incomplete'}</p>
+            <button class="view-details text-blue-500 text-sm" data-id="${task.id}">View Details</button>
+          </div>
+          <div class="flex gap-2">
+            <button class="delete-task bg-red-500 text-white px-2 py-1 rounded" data-id="${task.id}">Delete</button>
+          </div>
+        `;
+        taskList.appendChild(taskCard);
+      });
+
+      document.querySelectorAll('.view-details').forEach(btn => {
+        btn.addEventListener('click', () => fetchTaskDetails(btn.dataset.id));
+      });
+      document.querySelectorAll('.toggle-complete').forEach(btn => {
+        btn.addEventListener('click', () => toggleTaskStatus(btn.dataset.id));
+      });
+      document.querySelectorAll('.delete-task').forEach(btn => {
+        btn.addEventListener('click', () => deleteTask(btn.dataset.id));
+      });
+    }
+
+    async function fetchTaskDetails(id) {
+      try {
+        const response = await fetch(`/todo_list/${id}`);
+        const { data, error } = await response.json();
+        if (error) throw new Error(error);
+        alert(`Task Details:\nID: ${data.id}\nDescription: ${data.description}\nCompleted: ${data.completed}\nSerialized Task: ${data.serialized_task}`);
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+
+    // Add a single task
+    document.getElementById('add-task-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const description = document.getElementById('task-description').value;
+      const completed = document.getElementById('task-completed').checked;
+      try {
+        const response = await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ description, completed })
+        });
+        const { error } = await response.json();
+        if (error) throw new Error(error);
+        document.getElementById('add-task-form').reset();
+        fetchTasks(document.getElementById('completed-filter').value);
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    });
+
+    document.getElementById('add-bulk-task').addEventListener('click', () => {
+      const bulkTasks = document.getElementById('bulk-tasks');
+      const newTask = document.createElement('div');
+      newTask.className = 'bulk-task flex gap-2';
+      newTask.innerHTML = `
+        <input type="text" class="bulk-description flex-1 border rounded p-2" placeholder="Task description" required>
+        <label class="flex items-center">
+          <input type="checkbox" class="bulk-completed mr-2"> Completed
+        </label>
+        <button type="button" class="remove-task bg-red-500 text-white px-2 py-1 rounded">Remove</button>
+      `;
+      bulkTasks.appendChild(newTask);
+      newTask.querySelector('.remove-task').addEventListener('click', () => newTask.remove());
+    });
+
+    document.getElementById('bulk-add-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const tasks = Array.from(document.querySelectorAll('.bulk-task')).map(task => ({
+        description: task.querySelector('.bulk-description').value,
+        completed: task.querySelector('.bulk-completed').checked
+      }));
+      try {
+        const response = await fetch(`${API_BASE}/bulk_create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tasks })
+        });
+        const { error } = await response.json();
+        if (error) throw new Error(error);
+        document.getElementById('bulk-add-form').reset();
+        document.getElementById('bulk-tasks').innerHTML = `
+          <div class="bulk-task flex gap-2">
+            <input type="text" class="bulk-description flex-1 border rounded p-2" placeholder="Task description" required>
+            <label class="flex items-center">
+              <input type="checkbox" class="bulk-completed mr-2"> Completed
+            </label>
+            <button type="button" class="remove-task bg-red-500 text-white px-2 py-1 rounded">Remove</button>
+          </div>
+        `;
+        fetchTasks(document.getElementById('completed-filter').value);
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    });
+
+    async function deleteTask(id) {
+      if (!confirm('Are you sure you want to delete this task?')) return;
+      try {
+        const response = await fetch(`${API_BASE}/${id}`, {
+          method: 'DELETE'
+        });
+        const { error } = await response.json();
+        if (error) throw new Error(error);
+        fetchTasks(document.getElementById('completed-filter').value);
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+    document.getElementById('completed-filter').addEventListener('change', (e) => {
+      fetchTasks(e.target.value);
+    });
+    fetchTasks();
+  </script>
+</body>
+</html>

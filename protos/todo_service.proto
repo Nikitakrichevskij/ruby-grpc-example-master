@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package todo_service;
+
+service TodoService {
+  rpc AddTask (AddTaskRequest) returns (AddTaskResponse);
+
+  rpc AddTasksBulk (stream AddTasksBulkRequest) returns (AddTasksBulkResponse);
+
+  rpc ListTasks (ListTasksRequest) returns (stream ListTasksResponse);
+
+  rpc DeleteTask (DeleteTaskRequest) returns (DeleteTaskResponse);
+
+  rpc GetTask (GetTaskRequest) returns (GetTaskResponse);
+}
+
+message AddTaskRequest {
+  string description = 1;
+  bool completed = 2;
+}
+
+message AddTaskResponse {
+  int32 id = 1;
+  bytes serialized_task = 2;
+}
+
+message AddTasksBulkRequest {
+  string description = 1;
+  bool completed = 2;
+}
+
+message AddTasksBulkResponse {
+  int32 count = 1;
+}
+
+// Messages for Server Streaming RPC
+message ListTasksRequest {
+  bool completed = 1;
+}
+
+message ListTasksResponse {
+  int32 id = 1;
+  string description = 2;
+  bool completed = 3;
+}
+
+message UpdateTaskStatusRequest {
+  int32 id = 1;
+  bool completed = 2;
+}
+
+message DeleteTaskRequest {
+  int32 id = 1;
+}
+
+message DeleteTaskResponse {
+  int32 id = 1;
+}
+
+message GetTaskRequest {
+  int32 id = 1;
+}
+
+message GetTaskResponse {
+  int32 id = 1;
+  string description = 2;
+  bool completed = 3;
+  bytes serialized_task = 4;
+}
